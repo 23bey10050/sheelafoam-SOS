@@ -291,10 +291,11 @@ export function TrendLineChart({ showForecast = false, visibleBrands = null }) {
                   type="monotone"
                   dataKey={brand}
                   stroke={colorMap[brand]}
-                  strokeWidth={2}
+                  strokeWidth={['sleepwell', 'kurlon'].includes(brand) ? 3.5 : 2}
                   dot={false}
-                  activeDot={{ r: 5, strokeWidth: 0 }}
+                  activeDot={['sleepwell', 'kurlon'].includes(brand) ? { r: 6, strokeWidth: 2, stroke: 'white' } : { r: 5, strokeWidth: 0 }}
                   connectNulls
+                  strokeOpacity={['sleepwell', 'kurlon'].includes(brand) ? 1 : 0.8}
                 />
               ))}
 

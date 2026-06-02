@@ -126,7 +126,7 @@ export function AnalysisPage() {
   const currentSoS = useMemo(() => calculateCurrentSoS(sosData, allMonths, brands), [sosData, allMonths, brands]);
 
   const visibleBrands = useMemo(() => {
-    const defaultVisible = ['sleepwell', 'flo', 'wakefit', 'emma', 'kurlon', 'duroflex', 'the sleep company'];
+    const defaultVisible = ['sleepwell', 'flo', 'wakefit', 'emma', 'kurlon', 'duroflex', 'the sleep company', 'generic'];
     return brands.filter(b => defaultVisible.includes(b));
   }, [brands]);
 
