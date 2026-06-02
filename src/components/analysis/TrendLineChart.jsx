@@ -57,7 +57,7 @@ export function TrendLineChart({ showForecast = false, visibleBrands = null }) {
   const chartRef = useRef(null);
 
   const [selectedYear, setSelectedYear] = useState('all');
-  const [mode, setMode] = useState('absolute'); // 'absolute' | 'sos'
+  const [mode, setMode] = useState('sos'); // 'absolute' | 'sos'
 
   const colorMap = useMemo(() => createColorMap(brands, darkMode), [brands, darkMode]);
   const displayBrands = visibleBrands || brands;

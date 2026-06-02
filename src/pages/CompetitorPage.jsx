@@ -291,16 +291,22 @@ export function CompetitorPage() {
   const [showBrandSelector, setShowBrandSelector] = useState(!myBrands || myBrands.length === 0);
   
   const [showSettings, setShowSettings] = useState(false);
-  const [hiddenBrands, setHiddenBrands] = useState(() => {
-    const defaultVisible = ['sleepwell', 'flo', 'wakefit', 'emma', 'kurlon', 'duroflex', 'the sleep company'];
-    const hidden = new Set();
-    brands.forEach(b => {
-      if (b !== 'generic' && !defaultVisible.includes(b)) {
-        hidden.add(b);
-      }
-    });
-    return hidden;
-  });
+  const [hiddenBrands, setHiddenBrands] = useState(new Set());
+  const initializedRef = React.useRef(false);
+
+  React.useEffect(() => {
+    if (brands.length > 0 && !initializedRef.current) {
+      const defaultVisible = ['sleepwell', 'flo', 'wakefit', 'emma', 'kurlon', 'duroflex', 'the sleep company'];
+      const hidden = new Set();
+      brands.forEach(b => {
+        if (b !== 'generic' && !defaultVisible.includes(b)) {
+          hidden.add(b);
+        }
+      });
+      setHiddenBrands(hidden);
+      initializedRef.current = true;
+    }
+  }, [brands]);
 
   const colorMap = useMemo(() => createColorMap(brands, darkMode), [brands, darkMode]);
 

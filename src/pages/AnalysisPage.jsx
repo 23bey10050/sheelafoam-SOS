@@ -125,18 +125,10 @@ export function AnalysisPage() {
   const colorMap = useMemo(() => createColorMap(brands, darkMode), [brands, darkMode]);
   const currentSoS = useMemo(() => calculateCurrentSoS(sosData, allMonths, brands), [sosData, allMonths, brands]);
 
-  const [hiddenBrands, setHiddenBrands] = useState(() => {
+  const visibleBrands = useMemo(() => {
     const defaultVisible = ['sleepwell', 'flo', 'wakefit', 'emma', 'kurlon', 'duroflex', 'the sleep company'];
-    const hidden = new Set();
-    brands.forEach(b => {
-      if (b !== 'generic' && !defaultVisible.includes(b)) {
-        hidden.add(b);
-      }
-    });
-    return hidden;
-  });
-
-  const visibleBrands = useMemo(() => brands.filter(b => !hiddenBrands.has(b)), [brands, hiddenBrands]);
+    return brands.filter(b => defaultVisible.includes(b));
+  }, [brands]);
 
 
 
