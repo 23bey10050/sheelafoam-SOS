@@ -483,6 +483,14 @@ select.input {
   transform: scale(1.2);
 }
 
+.content-pushed {
+  padding-right: 300px;
+}
+
+.mobile-only {
+  display: none !important;
+}
+
 /* Responsive helpers */
 @media (max-width: 768px) {
   :root {
@@ -510,6 +518,7 @@ select.input {
     padding-right: 16px;
     width: calc(100% + 32px);
   }
+  
   .mobile-only {
     display: flex !important;
   }
@@ -526,14 +535,6 @@ select.input {
   .content-pushed {
     padding-right: 0 !important;
   }
-}
-
-.content-pushed {
-  padding-right: 300px;
-}
-
-.mobile-only {
-  display: none !important;
 }
 
 /* Sidebar overlay for mobile */

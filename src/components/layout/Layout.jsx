@@ -10,26 +10,7 @@ export function Layout({ children }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const isUpload = location.pathname === '/upload' || location.pathname === '/';
 
-  // Upload page uses its own full-screen layout
-  if (isUpload) {
-    return (
-      <div style={{ minHeight: '100vh', background: 'var(--bg-primary)' }}>
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={location.pathname}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="page-enter"
-          >
-            {children}
-          </motion.div>
-        </AnimatePresence>
-        <ToastContainer />
-      </div>
-    );
-  }
+
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg-primary)' }}>
