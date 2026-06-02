@@ -145,9 +145,9 @@ export function AnalysisPage() {
 
 
   return (
-    <div style={{ paddingRight: showSettings ? 300 : 0, transition: 'padding-right 0.3s ease' }}>
+    <div className={showSettings ? "content-pushed" : ""} style={{ transition: 'padding-right 0.3s ease' }}>
       {/* Header action row */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginBottom: '20px', gap: '16px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginBottom: '20px', gap: '16px', flexWrap: 'wrap' }}>
 
 
         {/* Action buttons */}

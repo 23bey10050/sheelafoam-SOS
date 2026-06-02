@@ -40,7 +40,8 @@
 
   /* Layout */
   --sidebar-width: 220px;
-  --topbar-height: 52px;
+  --sidebar-desktop-width: 220px;
+  --topbar-height: 60px;
 
   /* Chart brand colors */
   --color-brand-0: #0071E3;
@@ -247,6 +248,11 @@ body {
 
 .input::placeholder {
   color: var(--text-tertiary);
+}
+
+.table-container {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 select.input {
@@ -482,4 +488,70 @@ select.input {
   :root {
     --sidebar-width: 0px;
   }
+  
+  .card {
+    padding: 16px;
+  }
+  
+  .hide-on-mobile {
+    display: none !important;
+  }
+  
+  .mobile-col {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+  
+  .table-container {
+    margin-left: -16px;
+    margin-right: -16px;
+    padding-left: 16px;
+    padding-right: 16px;
+    width: calc(100% + 32px);
+  }
+  .mobile-only {
+    display: flex !important;
+  }
+  
+  .sidebar-mobile-transform {
+    transform: translateX(-100%) !important;
+    transition: transform 0.3s ease !important;
+  }
+  
+  .sidebar-mobile-transform.open {
+    transform: translateX(0) !important;
+  }
+  
+  .content-pushed {
+    padding-right: 0 !important;
+  }
+}
+
+.content-pushed {
+  padding-right: 300px;
+}
+
+.mobile-only {
+  display: none !important;
+}
+
+/* Sidebar overlay for mobile */
+.sidebar-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
+  z-index: 40;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.sidebar-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
 }

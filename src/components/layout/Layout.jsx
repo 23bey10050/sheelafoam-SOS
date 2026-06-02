@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 export function Layout({ children }) {
   const location = useLocation();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const isUpload = location.pathname === '/upload' || location.pathname === '/';
 
   // Upload page uses its own full-screen layout
@@ -32,7 +33,13 @@ export function Layout({ children }) {
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg-primary)' }}>
-      <Sidebar />
+      {/* Mobile overlay */}
+      <div 
+        className={`sidebar-overlay ${isMobileMenuOpen ? 'active' : ''}`}
+        onClick={() => setIsMobileMenuOpen(false)}
+      />
+      
+      <Sidebar isOpen={isMobileMenuOpen} setIsOpen={setIsMobileMenuOpen} />
 
       {/* Main area */}
       <div style={{
@@ -42,8 +49,9 @@ export function Layout({ children }) {
         flexDirection: 'column',
         minHeight: '100vh',
         overflow: 'hidden',
+        transition: 'margin-left 0.3s ease',
       }}>
-        <TopBar currentPath={location.pathname} />
+        <TopBar currentPath={location.pathname} onMenuClick={() => setIsMobileMenuOpen(true)} />
 
         <main style={{
           flex: 1,

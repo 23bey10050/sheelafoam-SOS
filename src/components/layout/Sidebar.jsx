@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import {
   Upload, FileText, BarChart2, Target,
   Settings, HelpCircle, TrendingUp,
-  CheckCircle, Circle, Lightbulb, Globe
+  X
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
@@ -20,7 +20,7 @@ const BOTTOM_ITEMS = [
   { path: '/help', icon: HelpCircle, label: 'Help' },
 ];
 
-export function Sidebar() {
+export function Sidebar({ isOpen, setIsOpen }) {
   const { state } = useApp();
   const navigate = useNavigate();
 
@@ -30,15 +30,20 @@ export function Sidebar() {
     return val && (Array.isArray(val) ? val.length > 0 : Object.keys(val).length > 0);
   };
 
+  const handleNavClick = () => {
+    if (setIsOpen) setIsOpen(false);
+  };
+
   return (
     <motion.aside
       initial={{ x: -220 }}
       animate={{ x: 0 }}
       transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+      className={`sidebar-mobile-transform ${isOpen ? 'open' : ''}`}
       style={{
-        width: 'var(--sidebar-width)',
+        width: 'var(--sidebar-desktop-width)',
         height: '100vh',
-        background: 'rgb(32, 51, 108',
+        background: 'rgb(32, 51, 108)',
         position: 'fixed',
         left: 0, top: 0,
         display: 'flex',
@@ -49,10 +54,17 @@ export function Sidebar() {
         borderRight: '1px solid rgba(255,255,255,0.06)',
       }}
     >
-      {/* Logo */}
-      <div style={{ padding: '20px 6px 6px' }}>
+      {/* Logo and Close Button */}
+      <div style={{ padding: '20px 6px 6px', position: 'relative' }}>
+        <button 
+          className="btn-ghost mobile-only" 
+          onClick={() => setIsOpen && setIsOpen(false)}
+          style={{ position: 'absolute', top: '16px', right: '10px', padding: '6px', color: '#FFF' }}
+        >
+          <X size={20} />
+        </button>
         <div
-          onClick={() => navigate('/upload')}
+          onClick={() => { navigate('/upload'); handleNavClick(); }}
           style={{
             display: 'flex', alignItems: 'center', gap: '10px',
             cursor: 'pointer', padding: '8px 10px', borderRadius: '10px',
@@ -66,7 +78,7 @@ export function Sidebar() {
           />
         </div>
         <div
-          onClick={() => navigate('/upload')}
+          onClick={() => { navigate('/upload'); handleNavClick(); }}
           style={{
             display: 'flex', alignItems: 'center', gap: '10px',
             cursor: 'pointer', padding: '8px 10px', borderRadius: '10px', paddingTop: '25px',
@@ -104,6 +116,9 @@ export function Sidebar() {
             <NavLink
               key={item.path}
               to={item.path}
+              onClick={() => {
+                if (isAvailable) handleNavClick();
+              }}
               style={({ isActive }) => ({
                 display: 'flex', alignItems: 'center', gap: '10px',
                 padding: '9px 12px', borderRadius: '8px',

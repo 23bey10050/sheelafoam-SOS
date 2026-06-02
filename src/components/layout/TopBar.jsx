@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sun, Moon, AlertTriangle } from 'lucide-react';
+import { Sun, Moon, AlertTriangle, Menu } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 const PAGE_TITLES = {
@@ -11,7 +11,7 @@ const PAGE_TITLES = {
   '/url-analysis': 'URL Analysis',
 };
 
-export function TopBar({ currentPath }) {
+export function TopBar({ currentPath, onMenuClick }) {
   const { state, dispatch } = useApp();
   const title = PAGE_TITLES[currentPath] || 'Share of Search';
 
@@ -54,9 +54,18 @@ export function TopBar({ currentPath }) {
         padding: '0 24px',
         position: 'sticky', top: 0, zIndex: 30,
         marginLeft: 'var(--sidebar-width)',
+        transition: 'margin-left 0.3s ease',
       }}>
         {/* Left: page title */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <button 
+            className="btn-ghost mobile-only" 
+            style={{ padding: '6px', marginRight: '4px' }} 
+            onClick={onMenuClick}
+          >
+            <Menu size={18} />
+          </button>
+          
           <h1 style={{
             fontSize: '16px', fontWeight: 700,
             color: 'var(--text-primary)',

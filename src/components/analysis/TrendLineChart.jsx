@@ -52,12 +52,23 @@ function CustomTooltip({ active, payload, label, mode, darkMode }) {
 }
 
 export function TrendLineChart({ showForecast = false, visibleBrands = null }) {
-  const { state } = useApp();
+  const { state, dispatch } = useApp();
   const { brandMonthlyData, sosData, allMonths, brands, darkMode } = state;
   const chartRef = useRef(null);
 
   const [selectedYear, setSelectedYear] = useState('all');
   const [mode, setMode] = useState('sos'); // 'absolute' | 'sos'
+
+  const handleYearChange = (year) => {
+    setSelectedYear(year);
+    if (year === 'all') {
+      dispatch({ type: 'SET_ANALYSIS_SETTING', key: 'rollingWindow', value: 12 });
+      dispatch({ type: 'SET_ANALYSIS_SETTING', key: 'graphTickInterval', value: '12' });
+    } else {
+      dispatch({ type: 'SET_ANALYSIS_SETTING', key: 'rollingWindow', value: 0 });
+      dispatch({ type: 'SET_ANALYSIS_SETTING', key: 'graphTickInterval', value: 'auto' });
+    }
+  };
 
   const colorMap = useMemo(() => createColorMap(brands, darkMode), [brands, darkMode]);
   const displayBrands = visibleBrands || brands;
@@ -214,7 +225,7 @@ export function TrendLineChart({ showForecast = false, visibleBrands = null }) {
         {availableYears.map(year => (
           <button
             key={year}
-            onClick={() => setSelectedYear(year)}
+            onClick={() => handleYearChange(year)}
             style={{
               padding: '5px 12px', borderRadius: '20px', border: 'none', cursor: 'pointer',
               fontSize: '12px', fontWeight: 600,
@@ -228,7 +239,7 @@ export function TrendLineChart({ showForecast = false, visibleBrands = null }) {
           </button>
         ))}
         <button
-          onClick={() => setSelectedYear('all')}
+          onClick={() => handleYearChange('all')}
           style={{
             padding: '5px 12px', borderRadius: '20px', border: 'none', cursor: 'pointer',
             fontSize: '12px', fontWeight: 600,
@@ -252,80 +263,84 @@ export function TrendLineChart({ showForecast = false, visibleBrands = null }) {
           ref={chartRef}
           style={{ background: 'transparent' }}
         >
-          <ResponsiveContainer width="100%" height={340}>
-            <LineChart data={chartData} margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
-              <XAxis
-                dataKey={xKey}
-                tick={{ fontSize: 11, fill: axisColor }}
-                tickLine={false}
-                axisLine={{ stroke: gridColor }}
-                interval={
-                  !isMonthly ? 0 :
-                  (!state.graphTickInterval || state.graphTickInterval === 'auto')
-                    ? (chartData.length > 24 ? Math.floor(chartData.length / 12) : 0)
-                    : (Number(state.graphTickInterval) - 1 || 0)
-                }
-              />
-              <YAxis
-                tick={{ fontSize: 11, fill: axisColor }}
-                tickLine={false}
-                axisLine={false}
-                tickFormatter={mode === 'sos' ? (v) => `${v.toFixed(0)}%` : formatVolume}
-                width={mode === 'sos' ? 40 : 54}
-              />
-              <Tooltip
-                content={<CustomTooltip mode={mode} darkMode={darkMode} />}
-                cursor={{ stroke: axisColor, strokeWidth: 1, strokeDasharray: '4 4' }}
-              />
-              <Legend
-                wrapperStyle={{ fontSize: '12px', paddingTop: '16px' }}
-                formatter={(v) => (
-                  <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{capitalizeBrand(v)}</span>
-                )}
-              />
+          <div className="chart-scroll-container" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: '12px', margin: '0 -12px', padding: '0 12px' }}>
+            <div style={{ minWidth: '600px', width: '100%', paddingRight: '12px' }}>
+              <ResponsiveContainer width="100%" height={340}>
+                <LineChart data={chartData} margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
+                  <XAxis
+                    dataKey={xKey}
+                    tick={{ fontSize: 11, fill: axisColor }}
+                    tickLine={false}
+                    axisLine={{ stroke: gridColor }}
+                    interval={
+                      !isMonthly ? 0 :
+                      (!state.graphTickInterval || state.graphTickInterval === 'auto')
+                        ? (chartData.length > 24 ? Math.floor(chartData.length / 12) : 0)
+                        : (Number(state.graphTickInterval) - 1 || 0)
+                    }
+                  />
+                  <YAxis
+                    tick={{ fontSize: 11, fill: axisColor }}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={mode === 'sos' ? (v) => `${v.toFixed(0)}%` : formatVolume}
+                    width={mode === 'sos' ? 40 : 54}
+                  />
+                  <Tooltip
+                    content={<CustomTooltip mode={mode} darkMode={darkMode} />}
+                    cursor={{ stroke: axisColor, strokeWidth: 1, strokeDasharray: '4 4' }}
+                  />
+                  <Legend
+                    wrapperStyle={{ fontSize: '12px', paddingTop: '16px' }}
+                    formatter={(v) => (
+                      <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{capitalizeBrand(v)}</span>
+                    )}
+                  />
 
-              {displayBrands.map((brand) => (
-                <Line
-                  key={brand}
-                  type="monotone"
-                  dataKey={brand}
-                  stroke={colorMap[brand]}
-                  strokeWidth={['sleepwell', 'kurlon'].includes(brand) ? 3.5 : 2}
-                  dot={false}
-                  activeDot={['sleepwell', 'kurlon'].includes(brand) ? { r: 6, strokeWidth: 2, stroke: 'white' } : { r: 5, strokeWidth: 0 }}
-                  connectNulls
-                  strokeOpacity={['sleepwell', 'kurlon'].includes(brand) ? 1 : 0.8}
-                />
-              ))}
+                  {displayBrands.map((brand) => (
+                    <Line
+                      key={brand}
+                      type="monotone"
+                      dataKey={brand}
+                      stroke={colorMap[brand]}
+                      strokeWidth={['sleepwell', 'kurlon'].includes(brand) ? 3.5 : 2}
+                      dot={false}
+                      activeDot={['sleepwell', 'kurlon'].includes(brand) ? { r: 6, strokeWidth: 2, stroke: 'white' } : { r: 5, strokeWidth: 0 }}
+                      connectNulls
+                      strokeOpacity={['sleepwell', 'kurlon'].includes(brand) ? 1 : 0.8}
+                    />
+                  ))}
 
-              {/* Forecast lines */}
-              {showForecast && mode === 'absolute' && displayBrands.map((brand) => (
-                <Line
-                  key={`${brand}_forecast`}
-                  type="monotone"
-                  dataKey={`${brand}_forecast`}
-                  stroke={colorMap[brand]}
-                  strokeWidth={2}
-                  strokeDasharray="6 4"
-                  dot={false}
-                  activeDot={{ r: 4 }}
-                  connectNulls
-                  legendType="none"
-                />
-              ))}
+                  {/* Forecast lines */}
+                  {showForecast && mode === 'absolute' && displayBrands.map((brand) => (
+                    <Line
+                      key={`${brand}_forecast`}
+                      type="monotone"
+                      dataKey={`${brand}_forecast`}
+                      stroke={colorMap[brand]}
+                      strokeWidth={2}
+                      strokeDasharray="6 4"
+                      dot={false}
+                      activeDot={{ r: 4 }}
+                      connectNulls
+                      legendType="none"
+                    />
+                  ))}
 
-              {/* Forecast reference line */}
-              {showForecast && chartData.some(d => d.isForecast) && (
-                <ReferenceLine
-                  x={chartData.filter(d => !d.isForecast).pop()?.label}
-                  stroke="var(--border)"
-                  strokeDasharray="4 4"
-                  label={{ value: 'Forecast', position: 'top', fill: 'var(--text-secondary)', fontSize: 10 }}
-                />
-              )}
-            </LineChart>
-          </ResponsiveContainer>
+                  {/* Forecast reference line */}
+                  {showForecast && chartData.some(d => d.isForecast) && (
+                    <ReferenceLine
+                      x={chartData.filter(d => !d.isForecast).pop()?.label}
+                      stroke="var(--border)"
+                      strokeDasharray="4 4"
+                      label={{ value: 'Forecast', position: 'top', fill: 'var(--text-secondary)', fontSize: 10 }}
+                    />
+                  )}
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
         </motion.div>
       </AnimatePresence>
 

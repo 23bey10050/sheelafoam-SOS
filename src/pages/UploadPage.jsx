@@ -186,8 +186,8 @@ export function UploadPage() {
         )}
       </AnimatePresence>
 
-      {/* Main content — desktop two-panel layout */}
-      <div style={{
+      {/* Main content — responsive two-panel layout */}
+      <div className="mobile-col" style={{
         flex: 1,
         display: 'grid',
         gridTemplateColumns: '340px 1fr',
@@ -380,7 +380,7 @@ export function UploadPage() {
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}
+              style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 12 }}
             >
               <div className="stat-card" style={{ padding: '14px 16px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>

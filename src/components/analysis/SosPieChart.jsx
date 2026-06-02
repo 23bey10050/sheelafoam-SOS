@@ -68,7 +68,7 @@ export function SosPieChart({ highlightBrands = [], highlightBrand = null, displ
   }, [brands, currentSoS, brandMonthlyData, allMonths, colorMap]);
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', alignItems: 'center' }}>
+    <div className="mobile-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', alignItems: 'center' }}>
       {/* Pie chart */}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         <div style={{ marginBottom: '16px' }}>

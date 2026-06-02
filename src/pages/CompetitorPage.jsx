@@ -14,11 +14,13 @@ import {
   buildChartData, buildDynamicSoSChartData, formatMonthShort,
 } from '../utils/chartHelpers';
 import {
-  calculateCurrentSoS, groupByYear
+  calculateCurrentSoS, groupByYear, calculateRollingAverage
 } from '../utils/sosCalculations';
 
 // Settings inspector panel for Competitor Page
 function CompetitorSettingsPanel({ isOpen, onClose, brands, colorMap, hiddenBrands, setHiddenBrands }) {
+  const { state, dispatch } = useApp();
+
   const toggleBrand = (brand) => {
     const newHidden = new Set(hiddenBrands);
     if (newHidden.has(brand)) {
@@ -54,7 +56,7 @@ function CompetitorSettingsPanel({ isOpen, onClose, brands, colorMap, hiddenBran
             </button>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             <div>
               <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>Visible Brands</p>
               <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '12px' }}>Choose which brands to show in this view</p>
@@ -75,6 +77,32 @@ function CompetitorSettingsPanel({ isOpen, onClose, brands, colorMap, hiddenBran
                   </label>
                 ))}
               </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <SelectSetting
+                label="Rolling Average"
+                description="Smooths out seasonal spikes"
+                value={state.rollingWindow}
+                options={[
+                  { value: 0, label: 'None (raw)' },
+                  { value: 3, label: '3-month' },
+                  { value: 6, label: '6-month' },
+                  { value: 12, label: '12-month' },
+                ]}
+                onChange={v => dispatch({ type: 'SET_ANALYSIS_SETTING', key: 'rollingWindow', value: Number(v) })}
+              />
+              <SelectSetting
+                label="Graph Duration Gap"
+                description="X-axis tick gap interval"
+                value={state.graphTickInterval}
+                options={[
+                  { value: 'auto', label: 'Auto' },
+                  { value: '6', label: '6 months' },
+                  { value: '12', label: '12 months' },
+                ]}
+                onChange={v => dispatch({ type: 'SET_ANALYSIS_SETTING', key: 'graphTickInterval', value: v })}
+              />
             </div>
           </div>
         </motion.div>
@@ -112,7 +140,7 @@ function BrandSelector({ isOpen, initialSelection = [], onSave }) {
       <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '20px' }}>
         Select up to two brands to see a personalized competitor comparison.
       </p>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
         {brands.filter(b => b !== 'generic').map((brand, i) => {
           const isSelected = selected.includes(brand);
           return (
@@ -158,27 +186,66 @@ function BrandSelector({ isOpen, initialSelection = [], onSave }) {
 
 // Competitor line chart
 function CompetitorLineChart({ displayBrands, colorMap }) {
-  const { state } = useApp();
+  const { state, dispatch } = useApp();
   const { brandMonthlyData, sosData, allMonths, darkMode, myBrands = [] } = state;
   const [mode, setMode] = useState('sos');
   const [selectedYear, setSelectedYear] = useState('all');
 
+  const handleYearChange = (year) => {
+    setSelectedYear(year);
+    if (year === 'all') {
+      dispatch({ type: 'SET_ANALYSIS_SETTING', key: 'rollingWindow', value: 12 });
+      dispatch({ type: 'SET_ANALYSIS_SETTING', key: 'graphTickInterval', value: '12' });
+    } else {
+      dispatch({ type: 'SET_ANALYSIS_SETTING', key: 'rollingWindow', value: 0 });
+      dispatch({ type: 'SET_ANALYSIS_SETTING', key: 'graphTickInterval', value: 'auto' });
+    }
+  };
+
   const yearlyData = useMemo(() => groupByYear(brandMonthlyData), [brandMonthlyData]);
   const availableYears = Object.keys(yearlyData).sort();
 
-  const { chartData } = useMemo(() => {
+  const { chartData, isMonthly } = useMemo(() => {
     if (selectedYear === 'all') {
-      const data = mode === 'sos'
-        ? buildDynamicSoSChartData(brandMonthlyData, allMonths, displayBrands)
-        : buildChartData(brandMonthlyData, allMonths, displayBrands);
-      return { chartData: data.map(d => ({ ...d, label: formatMonthShort(d.month) })) };
+      let data;
+      if (state.rollingWindow > 0) {
+        // Need to calculate dynamic SoS if mode === 'sos', otherwise absolute
+        // Note: calculateRollingAverage uses full denominator for SoS, we might need a dynamic one, 
+        // but since calculateRollingAverage supports `mode` and `brands` we can just pass displayBrands
+        const { rollingData } = calculateRollingAverage(brandMonthlyData, displayBrands, state.rollingWindow, mode);
+        data = allMonths.map(month => {
+          const entry = { month };
+          for (const brand of displayBrands) {
+            entry[brand] = parseFloat((rollingData[month]?.[brand] || 0).toFixed(2));
+          }
+          return entry;
+        });
+      } else {
+        data = mode === 'sos'
+          ? buildDynamicSoSChartData(brandMonthlyData, allMonths, displayBrands)
+          : buildChartData(brandMonthlyData, allMonths, displayBrands);
+      }
+      return { chartData: data.map(d => ({ ...d, label: formatMonthShort(d.month) })), isMonthly: true };
     }
+    
     const yearMonths = allMonths.filter(m => m.startsWith(selectedYear));
-    const data = mode === 'sos'
-      ? buildDynamicSoSChartData(brandMonthlyData, yearMonths, displayBrands)
-      : buildChartData(brandMonthlyData, yearMonths, displayBrands);
-    return { chartData: data.map(d => ({ ...d, label: formatMonthShort(d.month) })) };
-  }, [selectedYear, mode, brandMonthlyData, allMonths, displayBrands]);
+    let data;
+    if (state.rollingWindow > 0) {
+      const { rollingData } = calculateRollingAverage(brandMonthlyData, displayBrands, state.rollingWindow, mode);
+      data = yearMonths.map(month => {
+        const entry = { month };
+        for (const brand of displayBrands) {
+          entry[brand] = parseFloat((rollingData[month]?.[brand] || 0).toFixed(2));
+        }
+        return entry;
+      });
+    } else {
+      data = mode === 'sos'
+        ? buildDynamicSoSChartData(brandMonthlyData, yearMonths, displayBrands)
+        : buildChartData(brandMonthlyData, yearMonths, displayBrands);
+    }
+    return { chartData: data.map(d => ({ ...d, label: formatMonthShort(d.month) })), isMonthly: true };
+  }, [selectedYear, mode, brandMonthlyData, allMonths, displayBrands, state.rollingWindow]);
 
   const axisColor = darkMode ? '#636366' : '#8E8E93';
   const gridColor = darkMode ? '#2C2C2E' : '#F0F0F3';
@@ -215,7 +282,7 @@ function CompetitorLineChart({ displayBrands, colorMap }) {
         {availableYears.map(year => (
           <button
             key={year}
-            onClick={() => setSelectedYear(year)}
+            onClick={() => handleYearChange(year)}
             style={{
               padding: '5px 12px', borderRadius: '20px', border: 'none', cursor: 'pointer',
               fontSize: '12px', fontWeight: 600,
@@ -229,7 +296,7 @@ function CompetitorLineChart({ displayBrands, colorMap }) {
           </button>
         ))}
         <button
-          onClick={() => setSelectedYear('all')}
+          onClick={() => handleYearChange('all')}
           style={{
             padding: '5px 12px', borderRadius: '20px', border: 'none', cursor: 'pointer',
             fontSize: '12px', fontWeight: 600,
@@ -243,43 +310,54 @@ function CompetitorLineChart({ displayBrands, colorMap }) {
         </button>
       </div>
 
-      <ResponsiveContainer width="100%" height={300}>
-        <LineChart data={chartData} margin={{ top: 4, right: 16, left: 8, bottom: 4 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
-          <XAxis dataKey="label" tick={{ fontSize: 10, fill: axisColor }} tickLine={false}
-            axisLine={{ stroke: gridColor }} interval={0} angle={-45} textAnchor="end" height={50} />
-          <YAxis tick={{ fontSize: 10, fill: axisColor }} tickLine={false} axisLine={false}
-            tickFormatter={mode === 'sos' ? (v) => `${v.toFixed(0)}%` : formatVolume} width={48} />
-          <Tooltip
-            contentStyle={{
-              background: darkMode ? '#2C2C2E' : '#FFFFFF',
-              border: `1px solid ${darkMode ? '#3A3A3C' : '#E5E5EA'}`,
-              borderRadius: '10px', fontSize: '12px',
-            }}
-            formatter={(v, name) => [
-              mode === 'sos' ? formatPercent(v) : formatVolume(v),
-              capitalizeBrand(name) + (myBrands.includes(name) ? ' (you)' : ''),
-            ]}
-          />
-          <Legend formatter={(v) => (
-            <span style={{ color: myBrands.includes(v) ? colorMap[v] : 'var(--text-secondary)', fontWeight: myBrands.includes(v) ? 700 : 400 }}>
-              {capitalizeBrand(v)}{myBrands.includes(v) ? ' (you)' : ''}
-            </span>
-          )} />
+      <div className="chart-scroll-container" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: '12px', margin: '0 -12px', padding: '0 12px' }}>
+        <div style={{ minWidth: '600px', width: '100%', paddingRight: '12px' }}>
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={chartData} margin={{ top: 4, right: 16, left: 8, bottom: 4 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
+              <XAxis dataKey="label" tick={{ fontSize: 10, fill: axisColor }} tickLine={false}
+                axisLine={{ stroke: gridColor }} 
+                interval={
+                  !isMonthly ? 0 :
+                  (!state.graphTickInterval || state.graphTickInterval === 'auto')
+                    ? (chartData.length > 24 ? Math.floor(chartData.length / 12) : 0)
+                    : (Number(state.graphTickInterval) - 1 || 0)
+                }
+                angle={-45} textAnchor="end" height={50} />
+              <YAxis tick={{ fontSize: 10, fill: axisColor }} tickLine={false} axisLine={false}
+                tickFormatter={mode === 'sos' ? (v) => `${v.toFixed(0)}%` : formatVolume} width={48} />
+              <Tooltip
+                contentStyle={{
+                  background: darkMode ? '#2C2C2E' : '#FFFFFF',
+                  border: `1px solid ${darkMode ? '#3A3A3C' : '#E5E5EA'}`,
+                  borderRadius: '10px', fontSize: '12px',
+                }}
+                formatter={(v, name) => [
+                  mode === 'sos' ? formatPercent(v) : formatVolume(v),
+                  capitalizeBrand(name) + (myBrands.includes(name) ? ' (you)' : ''),
+                ]}
+              />
+              <Legend formatter={(v) => (
+                <span style={{ color: myBrands.includes(v) ? colorMap[v] : 'var(--text-secondary)', fontWeight: myBrands.includes(v) ? 700 : 400 }}>
+                  {capitalizeBrand(v)}{myBrands.includes(v) ? ' (you)' : ''}
+                </span>
+              )} />
 
-          {/* Render all display brands */}
-          {displayBrands.map(brand => (
-            <Line key={brand} type="monotone" dataKey={brand}
-              stroke={colorMap[brand]} 
-              strokeWidth={myBrands.includes(brand) ? 3.5 : 1.5} 
-              dot={false}
-              activeDot={myBrands.includes(brand) ? { r: 6, strokeWidth: 2, stroke: 'white' } : { r: 4 }} 
-              connectNulls 
-              strokeOpacity={myBrands.includes(brand) ? 1 : 0.8} 
-            />
-          ))}
-        </LineChart>
-      </ResponsiveContainer>
+              {/* Render all display brands */}
+              {displayBrands.map(brand => (
+                <Line key={brand} type="monotone" dataKey={brand}
+                  stroke={colorMap[brand]} 
+                  strokeWidth={myBrands.includes(brand) ? 3.5 : 1.5} 
+                  dot={false}
+                  activeDot={myBrands.includes(brand) ? { r: 6, strokeWidth: 2, stroke: 'white' } : { r: 4 }} 
+                  connectNulls 
+                  strokeOpacity={myBrands.includes(brand) ? 1 : 0.8} 
+                />
+              ))}
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
     </div>
   );
 }
@@ -333,7 +411,7 @@ export function CompetitorPage() {
   const visibleCompetitors = visibleBrands.filter(b => !myBrands.includes(b));
 
   return (
-    <div style={{ paddingRight: showSettings ? 300 : 0, transition: 'padding-right 0.3s ease' }}>
+    <div className={showSettings ? "content-pushed" : ""} style={{ transition: 'padding-right 0.3s ease' }}>
       {/* Brand selector modal */}
       <BrandSelector isOpen={showBrandSelector} initialSelection={myBrands} onSave={handleSaveBrands} />
       
@@ -350,7 +428,7 @@ export function CompetitorPage() {
       {myBrands && myBrands.length > 0 && (
         <>
           {/* Header */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
             <div>
               <p style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.06em', marginBottom: '4px' }}>
                 Competitor Analysis
@@ -411,3 +489,15 @@ export function CompetitorPage() {
 }
 
 export default CompetitorPage;
+
+function SelectSetting({ label, description, value, options, onChange }) {
+  return (
+    <div>
+      <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>{label}</p>
+      <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px' }}>{description}</p>
+      <select className="input" value={value} onChange={e => onChange(e.target.value)}>
+        {options.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+      </select>
+    </div>
+  );
+}

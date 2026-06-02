@@ -36,10 +36,10 @@ const initialState = {
 
   // Analysis settings
   excludeGeneric: false,
-  rollingWindow: 0, // 0 = none, 3, 6, 12
+  rollingWindow: 12, // 0 = none, 3, 6, 12
   showForecast: false,
   normalizeYAxis: false, // show % vs absolute
-  graphTickInterval: 'auto', // 'auto', '6', '12'
+  graphTickInterval: '12', // 'auto', '6', '12'
 
   // Quota
   quotaInfo: null,
