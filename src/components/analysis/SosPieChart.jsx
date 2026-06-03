@@ -49,7 +49,7 @@ export function SosPieChart({ highlightBrands = [], highlightBrand = null, displ
   const { state } = useApp();
   const { brandMonthlyData, allMonths, brands: contextBrands, darkMode } = state;
   const brands = displayBrands || contextBrands;
-  const [pieWindow, setPieWindow] = useState(3);
+  const [pieWindow, setPieWindow] = useState(12);
 
   const colorMap = useMemo(() => createColorMap(contextBrands, darkMode), [contextBrands, darkMode]);
   const highlightList = useMemo(() => highlightBrands.length > 0 ? highlightBrands : (highlightBrand ? [highlightBrand] : []), [highlightBrands, highlightBrand]);
