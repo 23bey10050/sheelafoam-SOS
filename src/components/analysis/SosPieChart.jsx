@@ -93,8 +93,8 @@ export function SosPieChart({ highlightBrands = [], highlightBrand = null, displ
               data={pieData}
               cx="50%"
               cy="50%"
-              innerRadius={110}
-              outerRadius={180}
+              innerRadius="45%"
+              outerRadius="75%"
               paddingAngle={2}
               dataKey="value"
               labelLine={false}
