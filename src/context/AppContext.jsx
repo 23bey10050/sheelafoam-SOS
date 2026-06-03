@@ -37,6 +37,7 @@ const initialState = {
   // Analysis settings
   excludeGeneric: false,
   rollingWindow: 12, // 0 = none, 3, 6, 12
+  rollOverMonth: 'auto', // 'auto', '01' - '12'
   showForecast: false,
   normalizeYAxis: false, // show % vs absolute
   graphTickInterval: '12', // 'auto', '6', '12'

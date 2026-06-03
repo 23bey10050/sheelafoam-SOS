@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Settings2, X } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, Legend,
+  ResponsiveContainer,
 } from 'recharts';
 import { Modal } from '../components/ui/Modal';
 import { SosPieChart } from '../components/analysis/SosPieChart';
@@ -60,12 +60,12 @@ function CompetitorSettingsPanel({ isOpen, onClose, brands, colorMap, hiddenBran
             <div>
               <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>Visible Brands</p>
               <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '12px' }}>Choose which brands to show in this view</p>
-              
+
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {brands.filter(b => b !== 'generic').map(brand => (
                   <label key={brand} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                    <input 
-                      type="checkbox" 
+                    <input
+                      type="checkbox"
                       checked={!hiddenBrands.has(brand)}
                       onChange={() => toggleBrand(brand)}
                       style={{ accentColor: colorMap[brand] }}
@@ -136,7 +136,7 @@ function BrandSelector({ isOpen, initialSelection = [], onSave }) {
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={() => {}} title="Select primary brands" width="560px">
+    <Modal isOpen={isOpen} onClose={() => { }} title="Select primary brands" width="560px">
       <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '20px' }}>
         Select up to two brands to see a personalized competitor comparison.
       </p>
@@ -144,36 +144,37 @@ function BrandSelector({ isOpen, initialSelection = [], onSave }) {
         {brands.filter(b => b !== 'generic').map((brand, i) => {
           const isSelected = selected.includes(brand);
           return (
-          <motion.button
-            key={brand}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.97 }}
-            onClick={() => toggleBrand(brand)}
-            style={{
-              padding: '16px', borderRadius: '12px',
-              border: `2px solid ${isSelected ? colorMap[brand] : colorMap[brand] + '40'}`,
-              background: isSelected ? `${colorMap[brand]}20` : `${colorMap[brand]}10`,
-              cursor: 'pointer', textAlign: 'left',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-              <div style={{ width: 12, height: 12, borderRadius: '50%', background: colorMap[brand] }} />
-              <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>
-                {capitalizeBrand(brand)}
-              </span>
-            </div>
-            <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '2px' }}>
-              {tagMap[brand]?.length || 0} keywords
-            </p>
-            <p style={{ fontSize: '18px', fontWeight: 800, color: colorMap[brand] }}>
-              {formatPercent(currentSoS[brand] || 0)} SoS
-            </p>
-          </motion.button>
-        )})}
+            <motion.button
+              key={brand}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => toggleBrand(brand)}
+              style={{
+                padding: '16px', borderRadius: '12px',
+                border: `2px solid ${isSelected ? colorMap[brand] : colorMap[brand] + '40'}`,
+                background: isSelected ? `${colorMap[brand]}20` : `${colorMap[brand]}10`,
+                cursor: 'pointer', textAlign: 'left',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                <div style={{ width: 12, height: 12, borderRadius: '50%', background: colorMap[brand] }} />
+                <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                  {capitalizeBrand(brand)}
+                </span>
+              </div>
+              <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '2px' }}>
+                {tagMap[brand]?.length || 0} keywords
+              </p>
+              <p style={{ fontSize: '18px', fontWeight: 800, color: colorMap[brand] }}>
+                {formatPercent(currentSoS[brand] || 0)} SoS
+              </p>
+            </motion.button>
+          )
+        })}
       </div>
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '24px' }}>
-        <button 
-          className="btn-primary" 
+        <button
+          className="btn-primary"
           onClick={() => onSave(selected)}
           disabled={selected.length === 0}
         >
@@ -190,10 +191,12 @@ function CompetitorLineChart({ displayBrands, colorMap }) {
   const { brandMonthlyData, sosData, allMonths, darkMode, myBrands = [] } = state;
   const [mode, setMode] = useState('sos');
   const [selectedYear, setSelectedYear] = useState('all');
+  const [rangeFrom, setRangeFrom] = useState('');
+  const [rangeTo, setRangeTo] = useState('');
 
   const handleYearChange = (year) => {
     setSelectedYear(year);
-    if (year === 'all') {
+    if (year === 'all' || year === 'range') {
       dispatch({ type: 'SET_ANALYSIS_SETTING', key: 'rollingWindow', value: 12 });
       dispatch({ type: 'SET_ANALYSIS_SETTING', key: 'graphTickInterval', value: '12' });
     } else {
@@ -205,15 +208,33 @@ function CompetitorLineChart({ displayBrands, colorMap }) {
   const yearlyData = useMemo(() => groupByYear(brandMonthlyData), [brandMonthlyData]);
   const availableYears = Object.keys(yearlyData).sort();
 
+  // Compute filtered months for range mode
+  const rangeMonths = useMemo(() => {
+    if (selectedYear !== 'range' || !rangeFrom || !rangeTo) return allMonths;
+    return allMonths.filter(m => {
+      const y = m.substring(0, 4);
+      return y >= rangeFrom && y <= rangeTo;
+    });
+  }, [selectedYear, rangeFrom, rangeTo, allMonths]);
+
   const { chartData, isMonthly } = useMemo(() => {
-    if (selectedYear === 'all') {
+    if (selectedYear === 'all' || selectedYear === 'range') {
+      const baseMonths = selectedYear === 'range' ? rangeMonths : allMonths;
       let data;
+      let monthsToUse = baseMonths;
+      if (state.rollingWindow === 12 && state.rollOverMonth && state.rollOverMonth !== 'auto') {
+        const firstMatchIndex = baseMonths.findIndex(m => m.endsWith(`-${state.rollOverMonth}`));
+        if (firstMatchIndex !== -1) {
+          monthsToUse = baseMonths.slice(firstMatchIndex);
+        }
+      }
+
       if (state.rollingWindow > 0) {
         // Need to calculate dynamic SoS if mode === 'sos', otherwise absolute
         // Note: calculateRollingAverage uses full denominator for SoS, we might need a dynamic one, 
         // but since calculateRollingAverage supports `mode` and `brands` we can just pass displayBrands
         const { rollingData } = calculateRollingAverage(brandMonthlyData, displayBrands, state.rollingWindow, mode);
-        data = allMonths.map(month => {
+        data = monthsToUse.map(month => {
           const entry = { month };
           for (const brand of displayBrands) {
             entry[brand] = parseFloat((rollingData[month]?.[brand] || 0).toFixed(2));
@@ -222,12 +243,12 @@ function CompetitorLineChart({ displayBrands, colorMap }) {
         });
       } else {
         data = mode === 'sos'
-          ? buildDynamicSoSChartData(brandMonthlyData, allMonths, displayBrands)
-          : buildChartData(brandMonthlyData, allMonths, displayBrands);
+          ? buildDynamicSoSChartData(brandMonthlyData, monthsToUse, displayBrands)
+          : buildChartData(brandMonthlyData, monthsToUse, displayBrands);
       }
       return { chartData: data.map(d => ({ ...d, label: formatMonthShort(d.month) })), isMonthly: true };
     }
-    
+
     const yearMonths = allMonths.filter(m => m.startsWith(selectedYear));
     let data;
     if (state.rollingWindow > 0) {
@@ -245,7 +266,16 @@ function CompetitorLineChart({ displayBrands, colorMap }) {
         : buildChartData(brandMonthlyData, yearMonths, displayBrands);
     }
     return { chartData: data.map(d => ({ ...d, label: formatMonthShort(d.month) })), isMonthly: true };
-  }, [selectedYear, mode, brandMonthlyData, allMonths, displayBrands, state.rollingWindow]);
+  }, [selectedYear, mode, brandMonthlyData, allMonths, rangeMonths, displayBrands, state.rollingWindow, state.rollOverMonth]);
+
+  const sortedBrands = useMemo(() => {
+    if (!chartData || chartData.length === 0) return displayBrands;
+    // Find the last data point where at least one brand has a value > 0
+    const lastPoint = chartData.slice().reverse().find(d =>
+      displayBrands.some(b => (d[b] || 0) > 0)
+    ) || chartData[chartData.length - 1];
+    return [...displayBrands].sort((a, b) => (lastPoint[b] || 0) - (lastPoint[a] || 0));
+  }, [chartData, displayBrands]);
 
   const axisColor = darkMode ? '#636366' : '#8E8E93';
   const gridColor = darkMode ? '#2C2C2E' : '#F0F0F3';
@@ -278,7 +308,7 @@ function CompetitorLineChart({ displayBrands, colorMap }) {
       </div>
 
       {/* Year selector */}
-      <div style={{ display: 'flex', gap: '6px', marginBottom: '20px', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: '6px', marginBottom: '20px', flexWrap: 'wrap', alignItems: 'center' }}>
         {availableYears.map(year => (
           <button
             key={year}
@@ -308,6 +338,106 @@ function CompetitorLineChart({ displayBrands, colorMap }) {
         >
           All Time
         </button>
+        <button
+          onClick={() => {
+            handleYearChange('range');
+            if (!rangeFrom && availableYears.length > 0) setRangeFrom(availableYears[0]);
+            if (!rangeTo && availableYears.length > 0) setRangeTo(availableYears[availableYears.length - 1]);
+          }}
+          style={{
+            padding: '5px 12px', borderRadius: '20px', border: 'none', cursor: 'pointer',
+            fontSize: '12px', fontWeight: 600,
+            background: selectedYear === 'range' ? 'var(--accent-blue)' : 'var(--bg-hover)',
+            color: selectedYear === 'range' ? 'white' : 'var(--text-secondary)',
+            border: '1px solid ' + (selectedYear === 'range' ? 'var(--accent-blue)' : 'var(--border-subtle)'),
+            transition: 'all 0.15s ease',
+          }}
+        >
+          Range
+        </button>
+
+        {selectedYear === 'range' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '4px' }}>
+            <select
+              value={rangeFrom}
+              onChange={(e) => {
+                setRangeFrom(e.target.value);
+                if (rangeTo && e.target.value > rangeTo) setRangeTo(e.target.value);
+              }}
+              style={{
+                padding: '4px 10px', borderRadius: '20px', height: 'auto', width: 'auto',
+                border: '1px solid var(--border-subtle)', background: 'var(--bg-card)',
+                color: 'var(--text-primary)', fontSize: '12px', fontWeight: 500, cursor: 'pointer',
+                outline: 'none'
+              }}
+            >
+              {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
+            <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600 }}>to</span>
+            <select
+              value={rangeTo}
+              onChange={(e) => {
+                setRangeTo(e.target.value);
+                if (rangeFrom && e.target.value < rangeFrom) setRangeFrom(e.target.value);
+              }}
+              style={{
+                padding: '4px 10px', borderRadius: '20px', height: 'auto', width: 'auto',
+                border: '1px solid var(--border-subtle)', background: 'var(--bg-card)',
+                color: 'var(--text-primary)', fontSize: '12px', fontWeight: 500, cursor: 'pointer',
+                outline: 'none'
+              }}
+            >
+              {availableYears.filter(y => y >= rangeFrom).map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
+          </div>
+        )}
+
+        {(selectedYear === 'all' || selectedYear === 'range') && state.rollingWindow === 12 && (
+          <select
+            value={state.rollOverMonth || 'auto'}
+            onChange={(e) => dispatch({ type: 'SET_ANALYSIS_SETTING', key: 'rollOverMonth', value: e.target.value })}
+            style={{
+              padding: '4px 10px',
+              borderRadius: '20px',
+              height: 'auto',
+              width: 'auto',
+              border: '1px solid var(--border-subtle)',
+              background: 'var(--bg-card)',
+              color: 'var(--text-primary)',
+              fontSize: '12px',
+              fontWeight: 500,
+              marginLeft: '4px',
+              cursor: 'pointer',
+              outline: 'none'
+            }}
+          >
+            <option value="auto">Start Month: Auto</option>
+            <option value="01">Jan</option>
+            <option value="02">Feb</option>
+            <option value="03">Mar</option>
+            <option value="04">Apr</option>
+            <option value="05">May</option>
+            <option value="06">Jun</option>
+            <option value="07">Jul</option>
+            <option value="08">Aug</option>
+            <option value="09">Sep</option>
+            <option value="10">Oct</option>
+            <option value="11">Nov</option>
+            <option value="12">Dec</option>
+          </select>
+        )}
+      </div>
+
+      {/* Custom legend sorted by last month data */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px', justifyContent: 'center', paddingBottom: '16px' }}>
+        {sortedBrands.map(brand => (
+          <div key={brand} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+            <div style={{ width: 10, height: 10, borderRadius: '50%', background: colorMap[brand], flexShrink: 0 }} />
+            <span style={{ fontSize: '13px', fontWeight: myBrands.includes(brand) ? 700 : 500, color: myBrands.includes(brand) ? colorMap[brand] : 'var(--text-secondary)' }}>
+              {capitalizeBrand(brand)}{myBrands.includes(brand) ? ' (you)' : ''}
+            </span>
+          </div>
+        ))}
       </div>
 
       <div className="chart-scroll-container" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: '12px', margin: '0 -12px', padding: '0 12px' }}>
@@ -316,42 +446,59 @@ function CompetitorLineChart({ displayBrands, colorMap }) {
             <LineChart data={chartData} margin={{ top: 4, right: 16, left: 8, bottom: 4 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
               <XAxis dataKey="label" tick={{ fontSize: 10, fill: axisColor }} tickLine={false}
-                axisLine={{ stroke: gridColor }} 
+                axisLine={{ stroke: gridColor }}
                 interval={
                   !isMonthly ? 0 :
-                  (!state.graphTickInterval || state.graphTickInterval === 'auto')
-                    ? (chartData.length > 24 ? Math.floor(chartData.length / 12) : 0)
-                    : (Number(state.graphTickInterval) - 1 || 0)
+                    (!state.graphTickInterval || state.graphTickInterval === 'auto')
+                      ? (chartData.length > 24 ? Math.floor(chartData.length / 12) : 0)
+                      : (Number(state.graphTickInterval) - 1 || 0)
                 }
                 angle={-45} textAnchor="end" height={50} />
               <YAxis tick={{ fontSize: 10, fill: axisColor }} tickLine={false} axisLine={false}
                 tickFormatter={mode === 'sos' ? (v) => `${v.toFixed(0)}%` : formatVolume} width={48} />
               <Tooltip
-                contentStyle={{
-                  background: darkMode ? '#2C2C2E' : '#FFFFFF',
-                  border: `1px solid ${darkMode ? '#3A3A3C' : '#E5E5EA'}`,
-                  borderRadius: '10px', fontSize: '12px',
+                content={({ active, payload, label }) => {
+                  if (!active || !payload?.length) return null;
+                  return (
+                    <div style={{
+                      background: darkMode ? '#2C2C2E' : '#FFFFFF',
+                      border: `1px solid ${darkMode ? '#3A3A3C' : '#E5E5EA'}`,
+                      borderRadius: '12px',
+                      padding: '12px 16px',
+                      boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+                      minWidth: 180,
+                    }}>
+                      <p style={{ fontSize: '11px', fontWeight: 600, color: darkMode ? '#8E8E93' : '#6E6E73', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                        {label}
+                      </p>
+                      {[...payload].sort((a, b) => b.value - a.value).map(entry => (
+                        <div key={entry.dataKey} style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', marginBottom: '4px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <div style={{ width: 8, height: 8, borderRadius: '50%', background: entry.color, flexShrink: 0 }} />
+                            <span style={{ fontSize: '12px', color: darkMode ? '#F5F5F7' : '#1D1D1F', fontWeight: myBrands.includes(entry.dataKey) ? 700 : 500 }}>
+                              {capitalizeBrand(entry.dataKey)}{myBrands.includes(entry.dataKey) ? ' (you)' : ''}
+                            </span>
+                          </div>
+                          <span style={{ fontSize: '12px', fontWeight: 700, color: entry.color }}>
+                            {mode === 'sos' ? formatPercent(entry.value) : formatVolume(entry.value)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  );
                 }}
-                formatter={(v, name) => [
-                  mode === 'sos' ? formatPercent(v) : formatVolume(v),
-                  capitalizeBrand(name) + (myBrands.includes(name) ? ' (you)' : ''),
-                ]}
+                cursor={{ stroke: axisColor, strokeWidth: 1, strokeDasharray: '4 4' }}
               />
-              <Legend formatter={(v) => (
-                <span style={{ color: myBrands.includes(v) ? colorMap[v] : 'var(--text-secondary)', fontWeight: myBrands.includes(v) ? 700 : 400 }}>
-                  {capitalizeBrand(v)}{myBrands.includes(v) ? ' (you)' : ''}
-                </span>
-              )} />
 
               {/* Render all display brands */}
-              {displayBrands.map(brand => (
+              {sortedBrands.map(brand => (
                 <Line key={brand} type="monotone" dataKey={brand}
-                  stroke={colorMap[brand]} 
-                  strokeWidth={myBrands.includes(brand) ? 3.5 : 1.5} 
+                  stroke={colorMap[brand]}
+                  strokeWidth={myBrands.includes(brand) ? 3.5 : 1.5}
                   dot={false}
-                  activeDot={myBrands.includes(brand) ? { r: 6, strokeWidth: 2, stroke: 'white' } : { r: 4 }} 
-                  connectNulls 
-                  strokeOpacity={myBrands.includes(brand) ? 1 : 0.8} 
+                  activeDot={myBrands.includes(brand) ? { r: 6, strokeWidth: 2, stroke: 'white' } : { r: 4 }}
+                  connectNulls
+                  strokeOpacity={myBrands.includes(brand) ? 1 : 0.8}
                 />
               ))}
             </LineChart>
@@ -367,7 +514,7 @@ export function CompetitorPage() {
   const { state, dispatch } = useApp();
   const { brands, myBrands = [], competitors, darkMode } = state;
   const [showBrandSelector, setShowBrandSelector] = useState(!myBrands || myBrands.length === 0);
-  
+
   const [showSettings, setShowSettings] = useState(false);
   const [hiddenBrands, setHiddenBrands] = useState(new Set());
   const initializedRef = React.useRef(false);
@@ -406,7 +553,7 @@ export function CompetitorPage() {
   // Calculate visible brands
   const allBrandsWithoutGeneric = brands.filter(b => b !== 'generic');
   const visibleBrands = allBrandsWithoutGeneric.filter(b => !hiddenBrands.has(b));
-  
+
   // Format the header list
   const visibleCompetitors = visibleBrands.filter(b => !myBrands.includes(b));
 
@@ -414,10 +561,10 @@ export function CompetitorPage() {
     <div className={showSettings ? "content-pushed" : ""} style={{ transition: 'padding-right 0.3s ease' }}>
       {/* Brand selector modal */}
       <BrandSelector isOpen={showBrandSelector} initialSelection={myBrands} onSave={handleSaveBrands} />
-      
+
       {/* Settings panel */}
-      <CompetitorSettingsPanel 
-        isOpen={showSettings} 
+      <CompetitorSettingsPanel
+        isOpen={showSettings}
         onClose={() => setShowSettings(false)}
         brands={brands}
         colorMap={colorMap}
@@ -445,7 +592,7 @@ export function CompetitorPage() {
                 </span>
               </h2>
             </div>
-            
+
             <div style={{ display: 'flex', gap: '8px' }}>
               <button
                 className="btn-secondary"
